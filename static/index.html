@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Secure File Locker</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 2rem auto; }
+        .box { border: 1px solid #ddd; padding: 1rem; margin: 1rem 0; border-radius: 8px; }
+        label { display: inline-block; width: 100px; }
+        input[type="text"], input[type="file"] { margin: 0.5rem 0; }
+        button { background: #0070f3; color: white; border: none; padding: 0.5rem 1.5rem; border-radius: 6px; cursor: pointer; }
+        #status { margin-top: 1rem; padding: 0.5rem; background: #f0f0f0; border-radius: 6px; }
+    </style>
+</head>
+<body>
+    <h1>🔐 Encrypted File Vault</h1>
+    <p>Upload a file with a secret code. Anyone with the same code can download it.</p>
+
+    <div class="box">
+        <h3>📤 Upload</h3>
+        <input type="file" id="fileInput" />
+        <br />
+        <label>Code:</label>
+        <input type="text" id="uploadCode" placeholder="e.g. mySecret123" />
+        <br /><br />
+        <button id="uploadBtn">Encrypt & Upload</button>
+    </div>
+
+    <div class="box">
+        <h3>📥 Download</h3>
+        <label>Code:</label>
+        <input type="text" id="downloadCode" placeholder="e.g. mySecret123" />
+        <br /><br />
+        <button id="downloadBtn">Decrypt & Download</button>
+    </div>
+
+    <div id="status"></div>
+
+    <script>
+        const status = document.getElementById('status');
+        function setStatus(msg, isError = false) {
+            status.textContent = msg;
+            status.style.color = isError ? '#d32f2f' : '#1b5e20';
+        }
+
+        document.getElementById('uploadBtn').addEventListener('click', async () => {
+            const fileInput = document.getElementById('fileInput');
+            const code = document.getElementById('uploadCode').value.trim();
+            if (!fileInput.files.length) { setStatus('Please select a file.', true); return; }
+            if (!code) { setStatus('Please enter a code.', true); return; }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('code', code);
+
+            try {
+                setStatus('Uploading and encrypting...');
+                const res = await fetch('/upload', { method: 'POST', body: formData });
+                const data = await res.json();
+                if (res.ok) setStatus('✅ Upload successful!');
+                else setStatus('❌ ' + (data.error || 'Unknown error'), true);
+            } catch (e) {
+                setStatus('❌ Network error: ' + e.message, true);
+            }
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', async () => {
+            const code = document.getElementById('downloadCode').value.trim();
+            if (!code) { setStatus('Please enter a code.', true); return; }
+
+            try {
+                setStatus('Downloading and decrypting...');
+                const res = await fetch(`/download?code=${encodeURIComponent(code)}`);
+                if (!res.ok) {
+                    const data = await res.json();
+                    setStatus('❌ ' + (data.error || 'Unknown error'), true);
+                    return;
+                }
+                // Trigger file download
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'decrypted_file';  // You can guess original extension
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+                setStatus('✅ Download started!');
+            } catch (e) {
+                setStatus('❌ Network error: ' + e.message, true);
+            }
+        });
+    </script>
+</body>
+</html>
