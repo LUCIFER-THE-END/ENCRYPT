@@ -11,9 +11,13 @@ from Crypto.Random import get_random_bytes
 
 import io
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 
-# ---------- Constants ----------
+@app.route('/')
+def index():
+    return send_from_directory('static', 'index.html')
+
+
 SALT_SIZE = 16
 NONCE_SIZE = 12
 TAG_SIZE = 16
